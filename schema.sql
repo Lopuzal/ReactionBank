@@ -22,6 +22,4 @@ id INTEGER PRIMARY KEY AUTOINCREMENT,
 folderPath TEXT
 );
 
-INSERT INTO Folders (folderPath) VALUES ("C:/Users/Lopuzal/Code/Reaction_bank");
-INSERT INTO Images (filePath,idFolder) VALUES ("aoeaoeoae", 1),("sociss", 1);
-INSERT INTO Tags (tag,idImage) VALUES ("oui",1),("non",1),("oui",2),("peut-etre",2);
+INSERT INTO Folders (folderPath) VALUES ("images");
