@@ -1,49 +1,51 @@
 import sqlite3
 from pathlib import Path
 
-def get_db_connection():
-    conn = sqlite3.connect('database.db')
-    conn.row_factory = sqlite3.Row
-    return conn
 
 class Imgbank:
-    def __init__(self,init=False):
-        if init:
-            conn = sqlite3.connect('database.db')
-            with open('schema.sql') as f:
-                conn.executescript(f.read())
+    def __init__(self,db_path="database.db"):
+        self._db_path = db_path
 
-            conn.commit()
-            conn.close()
-
-
-            conn.close()
+    def get_db_connection(self):
+        conn = sqlite3.connect(self._db_path)
+        conn.row_factory = sqlite3.Row
+        return conn
     
-    #Changes the path of a folder
-    def change_folder_path(self,id_folder,new_path):
-        conn = get_db_connection()
-        conn.execute("UPDATE Folders SET folderPath = ? WHERE idFolder = ?", (new_path, id_folder))
+    def init_db(self):
+        conn = self.get_db_connection()
+        with open('schema.sql') as f:
+            conn.executescript(f.read())
+
         conn.commit()
         conn.close()
-    
 
     #Takes a list of tags, returns a list of the corresponding image paths matching the tags
     def tags_list_to_image_paths_list(self,tags_list):
-        conn = get_db_connection()
-
-        #Changes row factory to concatenate folderPath with filePath
-        conn.row_factory = lambda cursor, row: row[0] + "/" + row[1]
-        return conn.execute("SELECT folderPath,filePath FROM Images JOIN Tags ON Images.id=idImage JOIN Folders ON idFolder = Folders.id WHERE tag IN ({0})".format(', '.join('?' for _ in tags_list)), tags_list).fetchall()
+        conn = self.get_db_connection()
+        conn.row_factory = lambda cursor, row: row[0]
+        return conn.execute("SELECT filePath FROM Images JOIN Tags ON Images.id=idImage WHERE tag IN ({0})".format(', '.join('?' for _ in tags_list)), tags_list).fetchall()
 
     #Takes a string of tags separated by a space, returns a list of tags
     def tags_str_to_tags_list(self,tags_str):
         return tags_str.split(" ")
     
     def add_entry(self,img_path,tags):
-        conn = get_db_connection()
-        conn.execute("INSERT INTO Images VALUES (?,?)", (img_path, 1))
-        idimg = conn.execute("SELECT last_insert_rowid()").fetchone()
+        conn = self.get_db_connection()
+
+        #Insert image
+        conn.execute("INSERT INTO Images (filePath) VALUES (?)", (img_path,))
+        idimg = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+        
+        #Insert tags
         for tag in tags:
-            conn.execute("INSERT INTO Tags VALUES (?,?)" (tag,idimg))
+            conn.execute("INSERT INTO Tags VALUES (?,?)", (tag,idimg))
+
+        conn.commit()
+        conn.close()
+
+    def delete_entry(self,id_img):
+        conn = self.get_db_connection()
+        conn.execute("DELETE FROM Tags WHERE idImage = ?",(id_img,))
+        conn.execute("DELETE FROM Images WHERE id = ?",(id_img,))
         conn.commit()
         conn.close()
